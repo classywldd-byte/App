@@ -37,6 +37,7 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
   const [alertsEnabled, setAlertsEnabled] = useState(false);
   const [liveAggPrice, setLiveAggPrice] = useState<number | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
+  const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
   const prevCrossRefs = useRef<Partial<Record<Timeframe, string>>>({});
   const retryTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -92,6 +93,7 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
     function connect() {
       if (isClosed) return;
       
+      setWsStatus('connecting');
       const url = urlsToTry[currentUrlIndex];
       console.log(`[WS Detail] Attempting connection to ${url}...`);
       
@@ -101,6 +103,7 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
       socket.onopen = () => {
         console.log(`[WS Detail] Opened!`);
         setWsConnected(true);
+        setWsStatus('connected');
         reconnectAttempts = 0;
       };
 
@@ -163,6 +166,7 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
         ws.onclose = null;
       }
       setWsConnected(false);
+      setWsStatus('disconnected');
       if (isClosed) return;
 
       if (currentUrlIndex < urlsToTry.length - 1) {
@@ -193,12 +197,13 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
         try { ws.close(); } catch (e) {}
       }
       setWsConnected(false);
+      setWsStatus('disconnected');
     };
   }, [coin.symbol, loading, error, Object.keys(dataByTf).length === timeframes.length]);
 
   // 3. HTTP Polling Fallback in case WebSocket is geoblocked/fails to connect
   useEffect(() => {
-    if (loading || error || wsConnected) return;
+    if (loading || error || wsConnected || wsStatus !== 'disconnected') return;
 
     console.log(`[WS Detail Fallback] WebSocket is offline or geoblocked. Polling HTTP API for ${coin.symbol} on ${activeTimeframe}`);
 
@@ -256,7 +261,7 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
     }, 4500);
 
     return () => clearInterval(intervalId);
-  }, [coin.symbol, activeTimeframe, loading, error, wsConnected]);
+  }, [coin.symbol, activeTimeframe, loading, error, wsConnected, wsStatus]);
 
   // Compute live crosses for all timeframes to check alerts
   const crossesForAllTfs: Partial<Record<Timeframe, string>> = {};
