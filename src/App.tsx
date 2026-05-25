@@ -249,6 +249,10 @@ export default function App() {
             }
           }
 
+          if (Math.random() < 0.05) {
+             console.log(`[WS Main] Received ${rawTickers.length} miniTickers`);
+          }
+
           const updates: Record<string, { price: number; change24h: number; volume24h: number; volatility24h: number }> = {};
 
           for (const item of rawTickers) {

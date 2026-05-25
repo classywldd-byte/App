@@ -113,22 +113,30 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
             setLiveAggPrice(price);
             
             setDataByTf(prev => {
-              const currentTfData = prev[activeTimeframeRef.current];
-              if (!currentTfData || currentTfData.klines.length === 0) return prev;
-
-              const klines = [...currentTfData.klines];
-              const closes = [...currentTfData.closes];
-              const lastIdx = klines.length - 1;
+              const newPrev = { ...prev };
+              let changed = false;
               
-              klines[lastIdx] = {
-                ...klines[lastIdx],
-                c: price,
-                h: Math.max(klines[lastIdx].h, price),
-                l: Math.min(klines[lastIdx].l, price)
-              };
-              closes[lastIdx] = price;
+              for (const tf in prev) {
+                const currentTfData = prev[tf as Timeframe];
+                if (!currentTfData || currentTfData.klines.length === 0) continue;
 
-              return { ...prev, [activeTimeframeRef.current]: { klines, closes } };
+                const klines = [...currentTfData.klines];
+                const closes = [...currentTfData.closes];
+                const lastIdx = klines.length - 1;
+                
+                klines[lastIdx] = {
+                  ...klines[lastIdx],
+                  c: price,
+                  h: Math.max(klines[lastIdx].h, price),
+                  l: Math.min(klines[lastIdx].l, price)
+                };
+                closes[lastIdx] = price;
+
+                newPrev[tf as Timeframe] = { klines, closes };
+                changed = true;
+              }
+              
+              return changed ? newPrev : prev;
             });
           }
         } catch (err) {
