@@ -31,7 +31,7 @@ jobs:
       - name: Install dependencies
         run: npm install
       - name: Build static site
-        run: npx vite build
+        run: npx vite build --base ./
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact

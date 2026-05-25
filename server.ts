@@ -67,8 +67,10 @@ async function startServer() {
     }
   });
 
+  const isProd = process.env.NODE_ENV === "production" || __dirname.includes("dist") || process.argv[1]?.includes("dist");
+
   // Serve static UI / vite config
-  if (process.env.NODE_ENV !== "production") {
+  if (!isProd) {
     console.log("Starting server in DEVELOPMENT mode with Vite Middleware...");
     const vite = await createViteServer({
       server: { middlewareMode: true },
