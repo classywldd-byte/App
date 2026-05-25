@@ -67,7 +67,7 @@ async function startServer() {
     }
   });
 
-  const isProd = process.env.NODE_ENV === "production" || __dirname.includes("dist") || process.argv[1]?.includes("dist");
+  const isProd = process.env.NODE_ENV === "production" || process.argv[1]?.includes("dist");
 
   // Serve static UI / vite config
   if (!isProd) {
