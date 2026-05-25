@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig(() => {
   return {
-    base: '/App/', // Cambia esto a tu nombre de repositorio
+    base: './',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
