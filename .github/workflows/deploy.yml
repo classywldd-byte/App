@@ -32,6 +32,7 @@ jobs:
           npm cache clean --force
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
+          npm rebuild
 
       - name: Build
         run: npm run build
