@@ -134,7 +134,7 @@ export default function App() {
               if (!sym || !sym.endsWith(':USDT')) continue; // CCXT format is usually BTC/USDT:USDT for futures
               
               const cleanSym = sym.replace('/', '').replace(':USDT', '');
-              const symbolKey = cleanSym + 'USDT';
+              const symbolKey = cleanSym.endsWith('USDT') ? cleanSym : `${cleanSym}USDT`;
               
               const price = item.last || 0;
               const open = item.open || 0;
@@ -159,13 +159,26 @@ export default function App() {
           }
 
           // 2. Try Direct Binance API
-          const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-          if (!res.ok) throw new Error('Direct API failed');
-          const rawTickers = await res.json();
-          if (!Array.isArray(rawTickers)) return;
+          const directRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+          let rawTickers: any[] | null = null;
+
+          if (directRes.ok) {
+            const parsed = await directRes.json();
+            rawTickers = Array.isArray(parsed) ? parsed : null;
+          }
+
+          // If direct browser call fails (CORS/geo/network), fallback to local server proxy
+          if (!rawTickers) {
+            const proxyRes = await fetch('/api/binance?path=%2Ffapi%2Fv1%2Fticker%2F24hr&futures=true');
+            if (!proxyRes.ok) throw new Error('Proxy API fallback failed');
+            const parsed = await proxyRes.json();
+            rawTickers = Array.isArray(parsed) ? parsed : null;
+          }
+
+          if (!rawTickers) return;
 
           const updates: Record<string, { price: number; change24h: number; volume24h: number; volatility24h: number }> = {};
-          
+
           for (const item of rawTickers) {
             const sym = item.symbol;
             if (!sym || !sym.endsWith('USDT')) continue;
