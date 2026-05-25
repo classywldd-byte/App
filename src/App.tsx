@@ -106,10 +106,16 @@ export default function App() {
     let reconnectTimeout: NodeJS.Timeout | null = null;
     let pollInterval: NodeJS.Timeout | null = null;
 
+    // For real-time tick-by-tick updates on prices, we use a combined @aggTrade stream for all scanned coins
+    const streamKeys = scannedCoins.map(c => `${c.symbol.toLowerCase()}@aggTrade`);
+    
+    // We chunk the streams in case there are too many (Binance allows up to 200 streams per socket)
+    const streamsParam = streamKeys.slice(0, 150).join('/');
+
     // Direct Binance URLs. Fallback from futures to spot.
     const urlsToTry = [
-      'wss://fstream.binance.com/ws/!miniTicker@arr',
-      'wss://stream.binance.com:9443/ws/!miniTicker@arr'
+      `wss://fstream.binance.com/stream?streams=${streamsParam}`,
+      `wss://stream.binance.com:9443/stream?streams=${streamsParam}`
     ];
       
     let currentUrlIndex = 0;
@@ -239,48 +245,28 @@ export default function App() {
 
       ws.onmessage = (event) => {
         try {
-          let rawTickers = JSON.parse(event.data);
+          const payload = JSON.parse(event.data);
           
-          if (!Array.isArray(rawTickers)) {
-            if (rawTickers.data && Array.isArray(rawTickers.data)) {
-               rawTickers = rawTickers.data;
-            } else {
-               return;
-            }
+          if (!payload.data || payload.data.e !== 'aggTrade') {
+            return;
           }
 
-          if (Math.random() < 0.05) {
-             console.log(`[WS Main] Received ${rawTickers.length} miniTickers`);
-          }
+          const data = payload.data;
+          const sym = data.s;
+          if (!sym) return;
 
-          const updates: Record<string, { price: number; change24h: number; volume24h: number; volatility24h: number }> = {};
-
-          for (const item of rawTickers) {
-            const sym = item.s;
-            if (!sym || !sym.endsWith('USDT')) continue;
-
-            const price = parseFloat(item.c);
-            const open = parseFloat(item.o);
-            const high = parseFloat(item.h);
-            const low = parseFloat(item.l);
-            const quoteVol = parseFloat(item.q || item.v);
-            const change24h = open > 0 ? ((price - open) / open) * 100 : 0;
-            const volatility24h = low > 0 ? ((high - low) / low) * 100 : 0;
-
-            updates[sym] = { price, change24h, volume24h: quoteVol, volatility24h };
-          }
+          const price = parseFloat(data.p);
 
           setScannedCoins(prevCoins => {
-            let changed = false;
-            const updated = prevCoins.map(coin => {
-              const u = updates[coin.symbol];
-              if (u && Math.abs(coin.price - u.price) > 0.00000001) {
-                changed = true;
-                return { ...coin, ...u };
-              }
-              return coin;
-            });
-            return changed ? updated : prevCoins;
+            const coinIdx = prevCoins.findIndex(c => c.symbol === sym);
+            if (coinIdx === -1) return prevCoins;
+            
+            const coin = prevCoins[coinIdx];
+            if (coin.price === price) return prevCoins;
+            
+            const updatedCoins = [...prevCoins];
+            updatedCoins[coinIdx] = { ...coin, price };
+            return updatedCoins;
           });
         } catch (err) {
           // fail silent

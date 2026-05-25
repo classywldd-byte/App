@@ -349,26 +349,26 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
 
   // Prepare chart lines if data exists
   const emaData = useMemo(() => [
-    { values: ema9Series.slice(-30), color: '#34d399', label: 'EMA 9' },
-    { values: ema18Series.slice(-30), color: '#10b981', label: 'EMA 18' },
-    { values: ema27Series.slice(-30), color: '#60a5fa', label: 'EMA 27' },
-    { values: ema36Series.slice(-30), color: '#3b82f6', label: 'EMA 36' },
-    { values: ema45Series.slice(-30), color: '#a78bfa', label: 'EMA 45' },
-    { values: ema56Series.slice(-30), color: '#ec4899', label: 'EMA 56' },
+    { values: ema9Series.slice(-60), color: '#34d399', label: 'EMA 9' },
+    { values: ema18Series.slice(-60), color: '#10b981', label: 'EMA 18' },
+    { values: ema27Series.slice(-60), color: '#60a5fa', label: 'EMA 27' },
+    { values: ema36Series.slice(-60), color: '#3b82f6', label: 'EMA 36' },
+    { values: ema45Series.slice(-60), color: '#a78bfa', label: 'EMA 45' },
+    { values: ema56Series.slice(-60), color: '#ec4899', label: 'EMA 56' },
   ], [ema9Series, ema18Series, ema27Series, ema36Series, ema45Series, ema56Series]);
 
   const emaDataFullscreen = useMemo(() => [
-    { values: ema9Series.slice(-50), color: '#34d399', label: 'EMA 9' },
-    { values: ema18Series.slice(-50), color: '#10b981', label: 'EMA 18' },
-    { values: ema27Series.slice(-50), color: '#60a5fa', label: 'EMA 27' },
-    { values: ema36Series.slice(-50), color: '#3b82f6', label: 'EMA 36' },
-    { values: ema45Series.slice(-50), color: '#a78bfa', label: 'EMA 45' },
-    { values: ema56Series.slice(-50), color: '#ec4899', label: 'EMA 56' },
+    { values: ema9Series.slice(-100), color: '#34d399', label: 'EMA 9' },
+    { values: ema18Series.slice(-100), color: '#10b981', label: 'EMA 18' },
+    { values: ema27Series.slice(-100), color: '#60a5fa', label: 'EMA 27' },
+    { values: ema36Series.slice(-100), color: '#3b82f6', label: 'EMA 36' },
+    { values: ema45Series.slice(-100), color: '#a78bfa', label: 'EMA 45' },
+    { values: ema56Series.slice(-100), color: '#ec4899', label: 'EMA 56' },
   ], [ema9Series, ema18Series, ema27Series, ema36Series, ema45Series, ema56Series]);
 
   let chartContent = null;
   if (!loading && !error && displayKlines.length >= 30) {
-    const subsetKlines = displayKlines.slice(-30);
+    const subsetKlines = displayKlines.slice(-60);
 
     chartContent = (
       <LightweightChart 
@@ -376,7 +376,7 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
         emas={emaData}
         symbol={coin.symbol}
         timeframe={activeTimeframe}
-        height={isFullscreen ? 500 : 300}
+        height={isFullscreen ? 650 : 450}
       />
     );
   }
@@ -384,7 +384,7 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
   return (
     <div className="fixed inset-0 bg-[#000]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
       <div 
-        className="bg-[#121418] border border-[#2a2d33] rounded max-w-lg w-full overflow-hidden shadow-2xl animate-scale-up"
+        className="bg-[#121418] border border-[#2a2d33] rounded max-w-5xl w-full overflow-hidden shadow-2xl animate-scale-up flex flex-col max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Banner header */}
@@ -443,7 +443,7 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
         </div>
 
         {/* Pane scrollable */}
-        <div className="p-5 max-h-[70vh] overflow-y-auto space-y-4 scrollbar-thin">
+        <div className="p-5 flex-1 overflow-y-auto space-y-4 scrollbar-thin">
           
           {/* Prices & Volatility info grid */}
           <div className="grid grid-cols-3 gap-1 py-2 px-3 bg-[#0c0d0e]/40 border border-[#2a2d33] rounded">
@@ -474,10 +474,28 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
           ) : error ? (
             <div className="py-8 text-center text-xs font-mono text-rose-400">{error}</div>
           ) : tfData ? (
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_300px] gap-4">
               
+              {/* Chart container goes first and spans full height of grid row */}
+              <div className="md:row-span-2">
+                <div className="bg-[#0c0d0e]/60 rounded border border-[#2a2d33] p-3 space-y-2 relative h-full flex flex-col">
+                  <div className="flex justify-between items-center pb-2 border-b border-[#1c1f26]">
+                    <span className="text-[10px] font-mono font-bold text-gray-400">PANE DE GRÁFICO REALTIME</span>
+                    <button 
+                      onClick={() => setIsFullscreen(true)}
+                      className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#121418] border border-[#2a2d33] text-[10px] text-gray-400 hover:text-white hover:bg-yellow-500 hover:text-black transition-all cursor-pointer font-mono font-bold"
+                    >
+                      <Maximize2 className="w-3 h-3" /> Pantalla Completa
+                    </button>
+                  </div>
+                  <div className="flex-1">
+                    {chartContent}
+                  </div>
+                </div>
+              </div>
+
               {/* EMA parameters metrics table */}
-              <div className="bg-[#0c0d0e]/20 border border-[#2a2d33] rounded p-3">
+              <div className="bg-[#0c0d0e]/20 border border-[#2a2d33] rounded p-3 h-fit">
                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-450 font-sans mb-2 flex items-center gap-1.5">
                   <Sparkles className="w-3 h-3 text-yellow-500" />
                   Métricas de EMA en {activeTimeframe}
@@ -511,22 +529,8 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
                 </div>
               </div>
 
-              {/* Chart container with headers and controls */}
-              <div className="bg-[#0c0d0e]/60 rounded border border-[#2a2d33] p-3 space-y-2 relative">
-                <div className="flex justify-between items-center pb-2 border-b border-[#1c1f26]">
-                  <span className="text-[10px] font-mono font-bold text-gray-400">PANE DE GRÁFICO REALTIME</span>
-                  <button 
-                    onClick={() => setIsFullscreen(true)}
-                    className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#121418] border border-[#2a2d33] text-[10px] text-gray-400 hover:text-white hover:bg-yellow-500 hover:text-black transition-all cursor-pointer font-mono font-bold"
-                  >
-                    <Maximize2 className="w-3 h-3" /> Pantalla Completa
-                  </button>
-                </div>
-                {chartContent}
-              </div>
-
               {/* Status breakdown */}
-              <div className="bg-[#0c0d0e]/30 border border-[#2a2d33] rounded p-3 space-y-2">
+              <div className="bg-[#0c0d0e]/30 border border-[#2a2d33] rounded p-3 space-y-2 h-fit">
                 <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400 font-sans mb-1">
                   Evaluación de Cruces
                 </h4>
