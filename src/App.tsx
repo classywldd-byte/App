@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { CoinScanResult, Timeframe, ScanProgress } from './types';
 import { fetchTop100Symbols, scanSingleSymbol } from './utils/binance';
+import { IndicatorType } from './utils/indicators';
 import { MetricCards } from './components/MetricCards';
 import { CoinDetail } from './components/CoinDetail';
 import { 
   Play, 
   Square, 
   Search, 
+  Settings,
   HelpCircle, 
   Flame, 
   TrendingUp, 
@@ -73,6 +75,11 @@ export default function App() {
   const [concurrency, setConcurrency] = useState<number>(3); // Standard request queue pacing
   const [lastScanTime, setLastScanTime] = useState<string>('04:00:52');
 
+  const [indicatorType, setIndicatorType] = useState<IndicatorType>(() => {
+    return (localStorage.getItem('binance_futures_indicator_type') as IndicatorType) || 'EMA';
+  });
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   // Scanner cancel control ref
   const cancelScanRef = useRef<boolean>(false);
 
@@ -90,6 +97,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('binance_futures_sort_method', sortMethod);
   }, [sortMethod]);
+
+  useEffect(() => {
+    localStorage.setItem('binance_futures_indicator_type', indicatorType);
+  }, [indicatorType]);
 
   const [wsStatus, setWsStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
 
@@ -427,7 +438,7 @@ export default function App() {
           }));
 
           try {
-            const scanResult = await scanSingleSymbol(coinData, activeTimeframes);
+            const scanResult = await scanSingleSymbol(coinData, activeTimeframes, indicatorType);
             if (scanResult && !cancelScanRef.current) {
               scannedListAccumulator.push(scanResult);
               // Real-time progressive append to results
@@ -634,12 +645,21 @@ export default function App() {
                 <Square className="w-3 h-3 text-white fill-white" /> PARAR
               </button>
             ) : (
-              <button
-                onClick={startScanningProcess}
-                className="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-black font-bold h-7 px-3 rounded text-[10px] transition-all shadow-md cursor-pointer font-mono"
-              >
-                <Play className="w-3 h-3 text-black fill-black" /> ESCANEAR
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="flex items-center justify-center p-1.5 hover:bg-[#1c1f26] bg-[#0c0d0e] rounded border border-[#2a2d33] transition-colors h-7 w-7 text-gray-400 hover:text-white"
+                  title="Ajustes y Parámetros"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={startScanningProcess}
+                  className="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-black font-bold h-7 px-3 rounded text-[10px] transition-all shadow-md cursor-pointer font-mono"
+                >
+                  <Play className="w-3 h-3 text-black fill-black" /> ESCANEAR
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -966,6 +986,7 @@ export default function App() {
         <CoinDetail 
           coin={scannedCoins.find(c => c.symbol === selectedCoinSymbol)!} 
           selectedTimeframe={selectedTimeframe} 
+          indicatorType={indicatorType}
           onClose={() => setSelectedCoinSymbol(null)} 
           onOpenCoinglass={(symbol) => setPreviewCoinglassSymbol(symbol)}
         />
@@ -1024,6 +1045,59 @@ export default function App() {
           </button>
         </div>
       </footer>
+
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-[#000]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-[#121418] border border-[#2a2d33] rounded max-w-md w-full shadow-2xl animate-scale-up flex flex-col overflow-hidden">
+            <div className="bg-[#1c1f26] px-5 py-4 border-b border-[#2a2d33] flex justify-between items-center">
+              <h2 className="text-sm font-black font-sans text-white tracking-tight flex items-center gap-2">
+                <Settings className="w-4 h-4 text-gray-400" /> Ajustes del Analizador
+              </h2>
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="text-gray-400 hover:text-white bg-[#121418] hover:bg-[#2a2d33] px-2 py-1 rounded border border-[#2a2d33] transition-colors text-xs font-bold cursor-pointer font-mono"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-5 space-y-5">
+              <div className="space-y-3">
+                <label className="text-xs font-bold uppercase tracking-wider text-gray-400 font-sans block">
+                  Tipo de Indicador de Tendencia
+                </label>
+                <p className="text-[10px] text-gray-500 font-mono leading-relaxed">
+                  Modifica la lógica de las tres medias móviles. Escoge según el lag (retraso) y suavidad deseada. Las estrategias con menor lag son mejores para scalping, pero pueden dar falsas alarmas.
+                </p>
+                <select 
+                  value={indicatorType}
+                  onChange={(e) => setIndicatorType(e.target.value as IndicatorType)}
+                  className="w-full bg-[#0c0d0e] border border-[#2a2d33] rounded px-3 py-2 text-sm text-white font-mono outline-none focus:border-yellow-500 transition-colors cursor-pointer"
+                >
+                  <option value="HMA">1. Hull MA (HMA) - ★★★★★ Lag Muy Bajo</option>
+                  <option value="TEMA">2. Triple EMA (TEMA) - ★★★★★ Lag Muy Bajo</option>
+                  <option value="ZLEMA">3. Zero Lag EMA - ★★★★★ Lag Muy Bajo</option>
+                  <option value="DEMA">4. Double EMA (DEMA) - ★★★★☆ Lag Bajo</option>
+                  <option value="ALMA">5. Arnaud Legoux MA (ALMA) - ★★★★☆ Lag Bajo</option>
+                  <option value="KAMA">6. Kaufman Adaptive MA - ★★★★☆ Lag Bajo</option>
+                  <option value="WMA">7. Weighted MA (WMA) - ★★★☆☆ Lag Medio-Bajo</option>
+                  <option value="EMA">8. Exponential MA (EMA) - ★★★☆☆ Lag Medio</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="bg-[#0c0d0e] px-5 py-4 border-t border-[#2a2d33] flex justify-end">
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-2 rounded text-xs font-black transition-all shadow-md cursor-pointer"
+              >
+                Guardar y Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

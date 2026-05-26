@@ -1,5 +1,5 @@
 import { CoinScanResult, Timeframe, Kline } from '../types';
-import { calculateEMA, analyzeCrossover, getOverallRating } from './indicators';
+import { calculateMA, analyzeCrossover, getOverallRating, IndicatorType } from './indicators';
 
 // We support both direct browser fetches and proxy fallback
 const BINANCE_FUTURES_BASE = 'https://fapi.binance.com';
@@ -116,7 +116,8 @@ export async function fetchSymbolData(symbol: string, interval: Timeframe, limit
  */
 export async function scanSingleSymbol(
   symbolData: any,
-  timeframes: Timeframe[]
+  timeframes: Timeframe[],
+  indicatorType: IndicatorType = 'EMA'
 ): Promise<CoinScanResult | null> {
   const symbol = symbolData.symbol;
   const price = parseFloat(symbolData.lastPrice || symbolData.price || '0');
@@ -140,12 +141,12 @@ export async function scanSingleSymbol(
       }
 
       // Calculate EMAs
-      const ema9 = calculateEMA(closes, 9);
-      const ema18 = calculateEMA(closes, 18);
-      const ema27 = calculateEMA(closes, 27);
-      const ema36 = calculateEMA(closes, 36);
-      const ema45 = calculateEMA(closes, 45);
-      const ema56 = calculateEMA(closes, 56);
+      const ema9 = calculateMA(closes, 9, indicatorType);
+      const ema18 = calculateMA(closes, 18, indicatorType);
+      const ema27 = calculateMA(closes, 27, indicatorType);
+      const ema36 = calculateMA(closes, 36, indicatorType);
+      const ema45 = calculateMA(closes, 45, indicatorType);
+      const ema56 = calculateMA(closes, 56, indicatorType);
 
       // Detect state and crossover
       const cross9_18 = analyzeCrossover(ema9, ema18);

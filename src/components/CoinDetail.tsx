@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { CoinScanResult, Timeframe, Kline } from '../types';
-import { calculateEMA, analyzeCrossover } from '../utils/indicators';
+import { calculateMA, analyzeCrossover, IndicatorType } from '../utils/indicators';
 import { fetchSymbolData } from '../utils/binance';
 import { playAlertSound } from '../utils/audio';
 import { LightweightChart } from './LightweightChart';
@@ -21,11 +21,12 @@ function loadCcxt(): Promise<any> {
 interface CoinDetailProps {
   coin: CoinScanResult;
   selectedTimeframe: Timeframe;
+  indicatorType: IndicatorType;
   onClose: () => void;
   onOpenCoinglass: (symbol: string) => void;
 }
 
-export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }: CoinDetailProps) {
+export function CoinDetail({ coin, selectedTimeframe, indicatorType, onClose, onOpenCoinglass }: CoinDetailProps) {
   const [activeTimeframe, setActiveTimeframe] = useState<Timeframe>(selectedTimeframe);
   const activeTimeframeRef = useRef(activeTimeframe);
   useEffect(() => { activeTimeframeRef.current = activeTimeframe; }, [activeTimeframe]);
@@ -263,8 +264,8 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
   for (const tf of timeframes) {
     const d = dataByTf[tf];
     if (d && d.closes.length > 18) {
-      const ema9 = calculateEMA(d.closes, 9);
-      const ema18 = calculateEMA(d.closes, 18);
+      const ema9 = calculateMA(d.closes, 9, indicatorType);
+      const ema18 = calculateMA(d.closes, 18, indicatorType);
       const cross = analyzeCrossover(ema9, ema18);
       crossesForAllTfs[tf] = cross.value;
     } else {
@@ -329,12 +330,12 @@ export function CoinDetail({ coin, selectedTimeframe, onClose, onOpenCoinglass }
   }
 
   const fullCloses = activeData.closes;
-  const ema9Series = fullCloses.length ? calculateEMA(fullCloses, 9) : [];
-  const ema18Series = fullCloses.length ? calculateEMA(fullCloses, 18) : [];
-  const ema27Series = fullCloses.length ? calculateEMA(fullCloses, 27) : [];
-  const ema36Series = fullCloses.length ? calculateEMA(fullCloses, 36) : [];
-  const ema45Series = fullCloses.length ? calculateEMA(fullCloses, 45) : [];
-  const ema56Series = fullCloses.length ? calculateEMA(fullCloses, 56) : [];
+  const ema9Series = fullCloses.length ? calculateMA(fullCloses, 9, indicatorType) : [];
+  const ema18Series = fullCloses.length ? calculateMA(fullCloses, 18, indicatorType) : [];
+  const ema27Series = fullCloses.length ? calculateMA(fullCloses, 27, indicatorType) : [];
+  const ema36Series = fullCloses.length ? calculateMA(fullCloses, 36, indicatorType) : [];
+  const ema45Series = fullCloses.length ? calculateMA(fullCloses, 45, indicatorType) : [];
+  const ema56Series = fullCloses.length ? calculateMA(fullCloses, 56, indicatorType) : [];
 
   const latestEma9 = ema9Series.length ? ema9Series[ema9Series.length - 1] : (tfData?.ema9 ?? null);
   const latestEma18 = ema18Series.length ? ema18Series[ema18Series.length - 1] : (tfData?.ema18 ?? null);

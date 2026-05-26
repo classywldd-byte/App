@@ -1,15 +1,11 @@
+export type IndicatorType = 'EMA' | 'HMA' | 'DEMA' | 'TEMA' | 'ALMA' | 'KAMA' | 'WMA' | 'ZLEMA';
+
 /**
- * EMA mathematical calculation:
- * EMA_t = (Price_t * alpha) + (EMA_{t-1} * (1 - alpha))
- * where alpha = 2 / (period + 1)
- *
- * For the initial EMA, we can use the simple moving average (SMA) of the first 'period' closing prices,
- * or simply the closing price of the first item to seed it.
+ * EMA mathematical calculation
  */
 export function calculateEMA(closes: number[], period: number): number[] {
   if (closes.length === 0) return [];
   if (closes.length < period) {
-    // Fallback: If not enough data, return array filled with close or standard EMA using what we have
     const k = 2 / (period + 1);
     const ema: number[] = [];
     let current = closes[0];
@@ -23,16 +19,14 @@ export function calculateEMA(closes: number[], period: number): number[] {
   const ema: number[] = new Array(closes.length);
   const k = 2 / (period + 1);
 
-  // Initialize first value with SMA of the first 'period' elements
   let sum = 0;
   for (let i = 0; i < period; i++) {
     sum += closes[i];
   }
   const sma = sum / period;
 
-  // Let all indexes prior to period-1 be SMA-approximations (or same as SMA)
   for (let i = 0; i < period - 1; i++) {
-    ema[i] = closes[i]; // seed values
+    ema[i] = closes[i];
   }
   ema[period - 1] = sma;
 
@@ -41,6 +35,129 @@ export function calculateEMA(closes: number[], period: number): number[] {
   }
 
   return ema;
+}
+
+export function calculateWMA(closes: number[], period: number): number[] {
+  const result = new Array(closes.length);
+  const denominator = (period * (period + 1)) / 2;
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period - 1) {
+      result[i] = closes[i];
+    } else {
+      let sum = 0;
+      for (let j = 0; j < period; j++) {
+        sum += closes[i - j] * (period - j);
+      }
+      result[i] = sum / denominator;
+    }
+  }
+  return result;
+}
+
+export function calculateHMA(closes: number[], period: number): number[] {
+  const halfPeriod = Math.floor(period / 2);
+  const sqrtPeriod = Math.floor(Math.sqrt(period));
+  const wmaHalf = calculateWMA(closes, halfPeriod);
+  const wmaFull = calculateWMA(closes, period);
+  const rawHMA = new Array(closes.length);
+  for (let i = 0; i < closes.length; i++) {
+    rawHMA[i] = (2 * wmaHalf[i]) - wmaFull[i];
+  }
+  return calculateWMA(rawHMA, sqrtPeriod);
+}
+
+export function calculateDEMA(closes: number[], period: number): number[] {
+  const ema1 = calculateEMA(closes, period);
+  const ema2 = calculateEMA(ema1, period);
+  const result = new Array(closes.length);
+  for (let i = 0; i < closes.length; i++) {
+    result[i] = 2 * ema1[i] - ema2[i];
+  }
+  return result;
+}
+
+export function calculateTEMA(closes: number[], period: number): number[] {
+  const ema1 = calculateEMA(closes, period);
+  const ema2 = calculateEMA(ema1, period);
+  const ema3 = calculateEMA(ema2, period);
+  const result = new Array(closes.length);
+  for (let i = 0; i < closes.length; i++) {
+    result[i] = 3 * ema1[i] - 3 * ema2[i] + ema3[i];
+  }
+  return result;
+}
+
+export function calculateZLEMA(closes: number[], period: number): number[] {
+  const lag = Math.floor((period - 1) / 2);
+  const zlema = new Array(closes.length);
+  const data = new Array(closes.length);
+  for (let i = 0; i < closes.length; i++) {
+    if (i < lag) {
+      data[i] = closes[i];
+    } else {
+      data[i] = closes[i] + (closes[i] - closes[i - lag]);
+    }
+  }
+  return calculateEMA(data, period);
+}
+
+export function calculateKAMA(closes: number[], period: number, fastEnd = 2, slowEnd = 30): number[] {
+  const result = new Array(closes.length);
+  const fastCmp = 2 / (fastEnd + 1);
+  const slowCmp = 2 / (slowEnd + 1);
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period) {
+      result[i] = closes[i];
+    } else {
+      const change = Math.abs(closes[i] - closes[i - period]);
+      let volatility = 0;
+      for (let j = 0; j < period; j++) {
+        volatility += Math.abs(closes[i - j] - closes[i - j - 1]);
+      }
+      const er = volatility === 0 ? 0 : change / volatility;
+      const sc = Math.pow((er * (fastCmp - slowCmp)) + slowCmp, 2);
+      result[i] = result[i - 1] + sc * (closes[i] - result[i - 1]);
+    }
+  }
+  return result;
+}
+
+export function calculateALMA(closes: number[], period: number, offset = 0.85, sigma = 6): number[] {
+  const result = new Array(closes.length);
+  const m = Math.floor(offset * (period - 1));
+  const s = period / sigma;
+  
+  for (let i = 0; i < closes.length; i++) {
+    if (i < period - 1) {
+      result[i] = closes[i];
+    } else {
+      let wSum = 0;
+      let pSum = 0;
+      for (let j = 0; j < period; j++) {
+        // According to ALMA formula j goes from 0 to period-1 
+        const w = Math.exp(-Math.pow(j - m, 2) / (2 * Math.pow(s, 2)));
+        pSum += closes[i - period + 1 + j] * w;
+        wSum += w;
+      }
+      result[i] = pSum / wSum;
+    }
+  }
+  return result;
+}
+
+export function calculateMA(closes: number[], period: number, type: IndicatorType = 'EMA'): number[] {
+  switch (type) {
+    case 'HMA': return calculateHMA(closes, period);
+    case 'DEMA': return calculateDEMA(closes, period);
+    case 'TEMA': return calculateTEMA(closes, period);
+    case 'ALMA': return calculateALMA(closes, period);
+    case 'KAMA': return calculateKAMA(closes, period);
+    case 'WMA': return calculateWMA(closes, period);
+    case 'ZLEMA': return calculateZLEMA(closes, period);
+    case 'EMA':
+    default:
+      return calculateEMA(closes, period);
+  }
 }
 
 export type CrossType = 'bullish' | 'bearish' | 'golden_cross' | 'dead_cross';
